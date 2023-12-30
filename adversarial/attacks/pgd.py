@@ -94,10 +94,7 @@ def pgd_loop(
         assert eps_iter.dim() == 1
         eps_iter = eps_iter.unsqueeze(1)
     delta.requires_grad_()
-    print(log)
-    print("ID: " + str(batch.id[0]), file=open(log, 'a'))
     for nbi in range(nb_iter):
-        print(time.time() - start)
         batch.sig = wav_init + delta, wav_lens
 
         predictions = asr_brain.compute_forward(batch, rs.Stage.ATTACK)
@@ -109,7 +106,6 @@ def pgd_loop(
             '', '', string.punctuation)).split(" ") for wrd in batch.wrd]
         ops = count_ops(op_table(target_words[0], predicted_words[0]))
         wer = 100.0 * sum(ops.values()) / max(1, len(target_words[0]))
-        print(str(nbi) + ": " + str(wer), file=open(log, 'a'))
 
         loss = asr_brain.compute_objectives(
             predictions, batch, rs.Stage.ATTACK)
@@ -122,7 +118,6 @@ def pgd_loop(
             if minimize:
                 loss = -loss
             loss.backward(inputs = delta)
-        print(time.time() - start)
         if order == np.inf:
             grad_sign = delta.grad.data.sign()
             delta.data = delta.data + eps_iter * grad_sign
@@ -142,14 +137,12 @@ def pgd_loop(
             )
             if eps is not None:
                 delta.data = l2_clamp_or_normalize(delta.data, eps)
-            print(time.time() - start)
         else:
             raise NotImplementedError(
                 "PGD attack only supports order=2 or order=np.inf"
             )
         delta.grad.data.zero_()
 
-        # print(loss)
     if isinstance(eps_iter, torch.Tensor):
         eps_iter = eps_iter.squeeze(1)
     wav_adv = torch.clamp(wav_init + delta, clip_min, clip_max)
